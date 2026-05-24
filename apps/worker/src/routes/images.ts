@@ -3,9 +3,25 @@ import type { Env } from '../index.js';
 
 const images = new Hono<Env>();
 
+function getImagesBucket(c: { env: Env['Bindings'] }) {
+  return c.env.IMAGES ?? null;
+}
+
+function imagesNotConfigured() {
+  return {
+    success: false,
+    error: 'Image storage is not configured. Enable the R2 IMAGES binding before using image upload APIs.',
+  };
+}
+
 // POST /api/images — upload image (base64 or binary)
 images.post('/api/images', async (c) => {
   try {
+    const bucket = getImagesBucket(c);
+    if (!bucket) {
+      return c.json(imagesNotConfigured(), 503);
+    }
+
     const contentType = c.req.header('Content-Type') || '';
 
     let data: ArrayBuffer;
@@ -54,7 +70,7 @@ images.post('/api/images', async (c) => {
     const id = crypto.randomUUID();
     const key = `${id}.${ext}`;
 
-    await c.env.IMAGES.put(key, data, {
+    await bucket.put(key, data, {
       httpMetadata: { contentType: mimeType },
       customMetadata: { originalFilename: filename ?? key },
     });
@@ -74,11 +90,16 @@ images.post('/api/images', async (c) => {
 
 // GET /api/images — list uploaded images (authed, for gallery UI)
 images.get('/api/images', async (c) => {
+  const bucket = getImagesBucket(c);
+  if (!bucket) {
+    return c.json(imagesNotConfigured(), 503);
+  }
+
   const cursor = c.req.query('cursor') ?? undefined;
   const rawLimit = Number(c.req.query('limit') ?? '50');
   const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), 200);
 
-  const listed = await c.env.IMAGES.list({ limit, cursor });
+  const listed = await bucket.list({ limit, cursor });
   const workerUrl = c.env.WORKER_URL || new URL(c.req.url).origin;
 
   const items = listed.objects.map((obj) => ({
@@ -102,8 +123,13 @@ images.get('/api/images', async (c) => {
 
 // GET /images/:key — serve image (public, no auth)
 images.get('/images/:key', async (c) => {
+  const bucket = getImagesBucket(c);
+  if (!bucket) {
+    return c.json(imagesNotConfigured(), 503);
+  }
+
   const key = c.req.param('key');
-  const object = await c.env.IMAGES.get(key);
+  const object = await bucket.get(key);
 
   if (!object) {
     return c.json({ success: false, error: 'Image not found' }, 404);
@@ -120,8 +146,13 @@ images.get('/images/:key', async (c) => {
 // DELETE /api/images/:key — delete image
 images.delete('/api/images/:key', async (c) => {
   try {
+    const bucket = getImagesBucket(c);
+    if (!bucket) {
+      return c.json(imagesNotConfigured(), 503);
+    }
+
     const key = c.req.param('key');
-    await c.env.IMAGES.delete(key);
+    await bucket.delete(key);
     return c.json({ success: true, data: null });
   } catch (err) {
     console.error('DELETE /api/images/:key error:', err);

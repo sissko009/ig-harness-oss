@@ -39,11 +39,12 @@ const webhook = new Hono<Env>();
 
 // GET /webhook — Meta verification challenge
 webhook.get('/webhook', (c) => {
-  const mode = c.req.query('hub.mode') ?? null;
-  const token = c.req.query('hub.verify_token') ?? null;
-  const challenge = c.req.query('hub.challenge') ?? null;
+  const params = new URL(c.req.url).searchParams;
+  const mode = params.get('hub.mode');
+  const token = params.get('hub.verify_token')?.trim() ?? null;
+  const challenge = params.get('hub.challenge');
 
-  const result = verifyWebhookChallenge(mode, token, challenge, c.env.IG_VERIFY_TOKEN);
+  const result = verifyWebhookChallenge(mode, token, challenge, c.env.IG_VERIFY_TOKEN?.trim());
   if (result) {
     return c.text(result, 200);
   }

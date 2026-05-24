@@ -28,7 +28,7 @@ import { getIGAccessToken, refreshIGAccessTokenIfNeeded } from './lib/ig-token.j
 export type Env = {
   Bindings: {
     DB: D1Database;
-    IMAGES: R2Bucket;
+    IMAGES?: R2Bucket;
     ASSETS: Fetcher;
     IG_APP_SECRET: string;
     IG_ACCESS_TOKEN: string;
@@ -101,6 +101,46 @@ p { color: #666; line-height: 1.6; }
 <a class="btn" href="https://ig.me/m/${c.env.IG_USERNAME ?? 'your_ig_username'}">DMを開く</a>
 <p style="margin-top:24px; font-size:13px; color:#999;">このコードを送信すると、LINEアカウントとInstagramアカウントが連携されます。</p>
 </body></html>`);
+});
+
+// Instagram Business Login OAuth callback.
+// Meta redirects here after the operator completes the business login flow.
+// The current single-account setup uses App Dashboard tokens, but this route
+// must exist and return 200 so Meta can validate the redirect URL cleanly.
+app.get('/instagram/oauth/callback', (c) => {
+  const error = c.req.query('error');
+  const errorDescription = c.req.query('error_description');
+  const code = c.req.query('code');
+
+  if (error) {
+    return c.html(`<!DOCTYPE html><html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instagram Login</title>
+</head><body>
+<h1>Instagramログインが完了しませんでした</h1>
+<p>${errorDescription ?? error}</p>
+</body></html>`, 200);
+  }
+
+  return c.html(`<!DOCTYPE html><html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instagram Login</title>
+<style>
+body { font-family: -apple-system, sans-serif; max-width: 520px; margin: 48px auto; padding: 0 20px; line-height: 1.7; }
+h1 { font-size: 24px; }
+p { color: #555; }
+</style></head><body>
+<h1>Instagramログインを受け付けました</h1>
+<p>${code ? '認証コードを受信しました。' : 'このURLはInstagram Business Loginのリダイレクト先です。'}</p>
+</body></html>`);
+});
+
+// Meta deauthorization callback for Business Login settings.
+app.post('/instagram/deauthorize', async (c) => {
+  return c.json({
+    success: true,
+    received_at: new Date().toISOString(),
+  });
 });
 
 // LINE bridge page — intermediate page between IG and LINE

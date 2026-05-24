@@ -2,7 +2,7 @@ name = "ig-harness"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 workers_dev = true
-account_id = "YOUR_ACCOUNT_ID"
+account_id = "9a3ef399a2b9e3a9def76d0626695566"
 
 # Static assets disabled for now — admin UI deployed separately
 # [assets]
@@ -12,11 +12,16 @@ account_id = "YOUR_ACCOUNT_ID"
 [[d1_databases]]
 binding = "DB"
 database_name = "instagram-harness"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "f7ad3e8c-cd86-42b4-8935-005eac7f65ec"
 
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "instagram-harness-images"
+# R2 is optional for the first comment-to-DM rollout. Enable R2 in the
+# Cloudflare dashboard and restore this binding when image hosting is needed.
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "instagram-harness-images"
 
 [triggers]
 crons = ["*/5 * * * *"]
+
+[vars]
+WORKER_URL = "https://ig-harness.liafis009.workers.dev"

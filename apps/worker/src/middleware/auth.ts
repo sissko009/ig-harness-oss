@@ -13,6 +13,8 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
     path === '/terms-of-service' ||
     path === '/data-deletion' ||
     path === '/connect' ||
+    path === '/instagram/oauth/callback' ||
+    path === '/instagram/deauthorize' ||
     path === '/line' ||
     path === '/api/followers/link-line' ||
     path === '/docs' ||
